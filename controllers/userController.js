@@ -44,6 +44,50 @@ const registerUser = async (req, res) => {
   }
 };
 
+// @desc    Login user
+// @route   POST /api/users/login
+// @access  Public
+const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400);
+    throw new Error("Please add all fields");
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    res.status(400);
+    throw new Error("Invalid credentials");
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    res.status(400);
+    throw new Error("Invalid credentials");
+  }
+
+  res.status(200).json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    token: generateToken(user._id), // Generate JWT
+  });
+};
+
+// @desc    Get user profile
+// @route   GET /api/users/profile
+// @access  Private
+const getUserProfile = async (req, res) => {
+  const user = req.user;
+
+  res.status(200).json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+  });
+};
+
 // @desc    Generate JWT
 // @route   POST /api/users/login
 // @access  Public
@@ -53,4 +97,4 @@ const generateToken = (id) => {
   });
 };
 
-module.exports = { registerUser };
+module.exports = { registerUser, loginUser, getUserProfile };
