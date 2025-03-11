@@ -61,7 +61,7 @@ const loginUser = async (req, res) => {
     throw new Error("Invalid credentials");
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  /*const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     res.status(400);
     throw new Error("Invalid credentials");
@@ -72,7 +72,24 @@ const loginUser = async (req, res) => {
     name: user.name,
     email: user.email,
     token: generateToken(user._id), // Generate JWT
-  });
+  });*/
+
+  if (user && (await bcrypt.compare(password, user.password))) {
+    const accessToken = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      accessToken,
+      refreshToken,
+    });
+  } else {
+    res.status(401);
+    throw new Error("Invalid email or password");
+  }
 };
 
 // @desc    Get user profile
@@ -92,9 +109,11 @@ const getUserProfile = async (req, res) => {
 // @route   POST /api/users/login
 // @access  Public
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
-  });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "15m" });
+};
+
+const generateRefreshToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
 };
 
 module.exports = { registerUser, loginUser, getUserProfile };

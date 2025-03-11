@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
 const taskRoutes = require("./routes/taskRoutes");
+const { errorHandler } = require("./middleware/errorMiddleware");
 
 dotenv.config();
 connectDB();
@@ -13,6 +14,8 @@ app.use(express.json()); // Middleware for parsing JSON
 app.use("/api/users", userRoutes); // Use user routes
 
 app.use("/api/tasks", taskRoutes); // Use task routes
+
+app.use(errorHandler);
 
 app.get("/", (req, res) => {
   res.send("API is running...");
