@@ -1,4 +1,5 @@
 const Task = require("../models/taskModel");
+const redisClient = require("../server");
 
 // @desc    Create a new task
 // @route   POST /api/tasks
@@ -21,17 +22,28 @@ const createTask = async (req, res) => {
 };
 
 const getTasks = async (req, res) => {
+  const userId = req.user._id;
+  const cacheKey = `tasks:${userId}`;
+
   try {
-    let tasks;
-    if (req.user.role === "admin") {
-      tasks = await Task.find(); // Admin sees everything
-    } else {
-      tasks = await Task.find({ user: req.user._id, isDeleted: false }); // Regular user sees only their own // Ignore soft-deleted tasks
+    const cachedTasks = await redisClient.get(cacheKey); // ← `await` is important
+
+    if (cachedTasks) {
+      console.log("🟢 Cache hit");
+      return res.status(200).json(JSON.parse(cachedTasks));
     }
+
+    console.log("🟡 Cache miss");
+    const tasks = await Task.find({ user: userId });
+
+    await redisClient.set(cacheKey, JSON.stringify(tasks), {
+      EX: 3600, // Cache expiry in seconds
+    });
 
     res.status(200).json(tasks);
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ Redis error:", error.message);
+    res.status(500).json({ message: error.message });
   }
 };
 
