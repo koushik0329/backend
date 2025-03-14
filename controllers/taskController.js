@@ -1,5 +1,5 @@
 const Task = require("../models/taskModel");
-const redisClient = require("../server");
+const redisClient = require("../config/redisClient");
 
 // @desc    Create a new task
 // @route   POST /api/tasks
@@ -26,7 +26,15 @@ const getTasks = async (req, res) => {
   const cacheKey = `tasks:${userId}`;
 
   try {
-    const cachedTasks = await redisClient.get(cacheKey); // ← `await` is important
+    // Check if Redis client is connected before attempting to use it
+    if (!redisClient.isOpen) {
+      console.log("⚠️ Redis client not connected, fetching from database");
+      const tasks = await Task.find({ user: userId });
+      return res.status(200).json(tasks);
+    }
+
+    // Try to get data from cache
+    const cachedTasks = await redisClient.get(cacheKey);
 
     if (cachedTasks) {
       console.log("🟢 Cache hit");
@@ -36,6 +44,7 @@ const getTasks = async (req, res) => {
     console.log("🟡 Cache miss");
     const tasks = await Task.find({ user: userId });
 
+    // Set data in cache with expiration
     await redisClient.set(cacheKey, JSON.stringify(tasks), {
       EX: 3600, // Cache expiry in seconds
     });

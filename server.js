@@ -5,10 +5,11 @@ const connectDB = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 const { errorHandler } = require("./middleware/errorMiddleware");
-const redis = require("redis");
+const { redisClient, connectRedis } = require("./config/redisClient");
 
 dotenv.config();
 connectDB();
+connectRedis(); // Initialize Redis connection
 
 const app = express();
 app.use(express.json()); // Middleware for parsing JSON
@@ -20,22 +21,6 @@ app.use("/api/users", userRoutes); // Use user routes
 app.use("/api/tasks", taskRoutes); // Use task routes
 
 app.use(errorHandler);
-
-const redisClient = redis.createClient();
-
-redisClient.on("connect", () => console.log("✅ Redis connected successfully"));
-redisClient.on("error", (err) =>
-  console.log("❌ Redis connection error:", err)
-);
-
-(async () => {
-  try {
-    await redisClient.connect(); // THIS IS ESSENTIAL
-    console.log("🚀 Redis client connected");
-  } catch (err) {
-    console.error("❌ Failed to connect to Redis:", err);
-  }
-})();
 
 app.get("/", (req, res) => {
   res.send("API is running...");
