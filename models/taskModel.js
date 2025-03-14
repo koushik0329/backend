@@ -14,11 +14,9 @@ const taskSchema = mongoose.Schema(
     description: {
       type: String,
     },
-    status: {
-      type: String,
-      enum: ["pending", "in-progress", "completed"],
-      default: "pending",
-    },
+    isCompleted: { type: Boolean, default: false }, // New field
+    isDeleted: { type: Boolean, default: false }, // Soft delete flag
+    attachment: { type: String },
   },
   {
     timestamps: true,

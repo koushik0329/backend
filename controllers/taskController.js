@@ -14,47 +14,25 @@ const createTask = async (req, res) => {
     user: req.user._id,
     title,
     description,
+    attachment: req.file ? req.file.path : undefined, // Save file path if uploaded
   });
 
   res.status(201).json(task);
 };
 
-// @desc    Get all tasks for the logged-in user
-// @route   GET /api/tasks
-// @access  Private
-/*const getTasks = async (req, res) => {
-  const tasks = await Task.find({ user: req.user._id });
-  res.status(200).json(tasks);
-};*/
-// GET /api/tasks?status=completed&sortBy=newest
-/*const getTasks = async (req, res) => {
-  const { status, sortBy } = req.query;
-
-  const query = { user: req.user._id };
-  if (status) query.status = status;
-
-  const sortOptions = {};
-  if (sortBy === "newest") sortOptions.createdAt = -1;
-  if (sortBy === "oldest") sortOptions.createdAt = 1;
-
-  const tasks = await Task.find(query).sort(sortOptions);
-  res.status(200).json(tasks);
-};*/
-// GET /api/tasks?page=2&limit=5
 const getTasks = async (req, res) => {
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
+  try {
+    let tasks;
+    if (req.user.role === "admin") {
+      tasks = await Task.find(); // Admin sees everything
+    } else {
+      tasks = await Task.find({ user: req.user._id, isDeleted: false }); // Regular user sees only their own // Ignore soft-deleted tasks
+    }
 
-  const tasks = await Task.find({ user: req.user._id }).skip(skip).limit(limit);
-
-  const totalTasks = await Task.countDocuments({ user: req.user._id });
-
-  res.status(200).json({
-    page,
-    totalPages: Math.ceil(totalTasks / limit),
-    tasks,
-  });
+    res.status(200).json(tasks);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 // @desc    Update a task
@@ -67,7 +45,10 @@ const updateTask = async (req, res) => {
     return res.status(404).json({ message: "Task not found" });
   }
 
-  if (task.user.toString() !== req.user._id.toString()) {
+  if (
+    task.user.toString() !== req.user._id.toString() &&
+    req.user.role !== "admin"
+  ) {
     return res.status(401).json({ message: "Not authorized" });
   }
 
@@ -88,12 +69,66 @@ const deleteTask = async (req, res) => {
     return res.status(404).json({ message: "Task not found" });
   }
 
-  if (task.user.toString() !== req.user._id.toString()) {
-    return res.status(401).json({ message: "Not authorized" });
+  if (
+    task.user.toString() !== req.user._id.toString() &&
+    req.user.role !== "admin"
+  ) {
+    return res.status(403).json({ message: "Not authorized" });
   }
 
-  await task.deleteOne();
+  await task.remove();
   res.status(200).json({ message: "Task removed" });
 };
 
-module.exports = { createTask, getTasks, updateTask, deleteTask };
+const updateTaskStatus = async (req, res) => {
+  const task = await Task.findById(req.params.id);
+
+  if (!task) {
+    res.status(404);
+    throw new Error("Task not found");
+  }
+
+  if (
+    task.user.toString() !== req.user._id.toString() &&
+    req.user.role !== "admin"
+  ) {
+    res.status(403);
+    throw new Error("Not authorized to update this task");
+  }
+
+  task.isCompleted = !task.isCompleted; // Toggle status
+  await task.save();
+
+  res.status(200).json(task);
+};
+
+const softDeleteTask = async (req, res) => {
+  const task = await Task.findById(req.params.id);
+
+  if (!task) {
+    res.status(404);
+    throw new Error("Task not found");
+  }
+
+  if (
+    task.user.toString() !== req.user._id.toString() &&
+    req.user.role !== "admin"
+  ) {
+    res.status(403);
+    throw new Error("Not authorized to delete this task");
+  }
+
+  task.isDeleted = true;
+  await task.save();
+
+  res.status(200).json({ message: "Task soft deleted" });
+};
+
+module.exports = {
+  createTask,
+  getTasks,
+  updateTask,
+  deleteTask,
+  updateTaskStatus,
+  softDeleteTask,
+};

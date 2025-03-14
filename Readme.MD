@@ -20,3 +20,6 @@ Building task ownership and advanced authorization.
 Make sure users can only access their own tasks
 Let admin users access all tasks
 Add route protection for task updates/deletes — only task owners can modify them
+
+Task Completion and Soft Delete
+Mark tasks as complete/incomplete and Soft delete using an isDeleted flag

@@ -32,6 +32,6 @@ router.post("/refresh", (req, res) => {
 
 router.get("/profile", protect, getUserProfile);
 
-router.get("/admin/users", protect, admin, getAllUsers);
+router.get("/admin/users", protect, admin, getUserProfile);
 
 module.exports = router;

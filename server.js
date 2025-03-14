@@ -1,5 +1,6 @@
 const express = require("express");
 const dotenv = require("dotenv");
+const path = require("path");
 const connectDB = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
 const taskRoutes = require("./routes/taskRoutes");
@@ -10,6 +11,8 @@ connectDB();
 
 const app = express();
 app.use(express.json()); // Middleware for parsing JSON
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/api/users", userRoutes); // Use user routes
 
